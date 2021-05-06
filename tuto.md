@@ -11,4 +11,6 @@ git remote add origin https://github.com/mikaody/mysqlER.git
 git branch -M main
 git push -u origin main
 
-
+git add .
+git commit -am "push"
+git push -u mysqlGit mysql
