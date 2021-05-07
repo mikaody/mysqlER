@@ -3,19 +3,33 @@
 DROP DATABASE IF EXISTS dbEnock;
 CREATE DATABASE dbEnock;
 
+CREATE TABLE dbEnock.jobs(
+	idjob INT AUTO_INCREMENT NOT NULL,
+	job VARCHAR(55) NOT NULL,
+	PRIMARY KEY(idjob)
+);
+
 CREATE TABLE dbEnock.users(
     iduser INT AUTO_INCREMENT NOT NULL,
     email VARCHAR(55) NOT NULL,
-    mdp VARCHAR(255) NOT NULL,
-    PRIMARY KEY(iduser)
+    mdp blob NOT NULL,
+    name VARCHAR(255) NULL,
+    idjob INT NOT NULL,
+    PRIMARY KEY(iduser),
+    FOREIGN KEY users(idjob) REFERENCES jobs(idjob)
 );
 
-INSERT INTO dbEnock.users(email,mdp) VALUES
-	('enock@site.com','123'),	
-	('koto@site.com','123'),    
-	('liva@site.com','123'),    
-	('rajao@site.com','123'),    
-	('bean@site.com','123')    
+INSERT INTO dbEnock.jobs(job) VALUES
+	("agriculteur"),
+	("livreur"),
+	("vendeur");
+
+INSERT INTO dbEnock.users(email,mdp,idjob) VALUES
+	('enock@site.com',AES_ENCRYPT('123', 'pass'), 1),	
+	('koto@site.com',AES_ENCRYPT('123', 'pass'), 1),    
+	('liva@site.com',AES_ENCRYPT('123', 'pass'), 3),   
+	('rajao@site.com',AES_ENCRYPT('123', 'pass'), 2),    
+	('bean@site.com',AES_ENCRYPT('123', 'pass'), 1)    
 ;
 
 ALTER TABLE dbEnock.users ADD (isAdmin boolean, isConnected boolean);
@@ -41,7 +55,7 @@ DELIMITER //
 
 CREATE PROCEDURE listUsers ()
  BEGIN
-   SELECT * FROM users;
+   SELECT iduser, email, cast(aes_decrypt(mdp, "pass") as VARCHAR(55)), name, isAdmin, isConnected FROM users;
  END;
 //
 
@@ -55,7 +69,8 @@ CREATE PROCEDURE editPassById (IN param1 VARCHAR(55), IN param2 VARCHAR(55)) -- 
  BEGIN -- IN means the parameter is the parameter using when we call the procedure
  	   -- OUT means the parameter is the returned value whenever it can be row or multiple rows and can be only used external of the procedure
        -- INOUT means the parameter is a global variable
-   UPDATE users SET users.mdp = param2 WHERE users.iduser = param1;
+-- https://zinoui.com/blog/storing-passwords-securely#:~:text=To%20encrypt%20a%20password%20use%20the%20ENCODE%20%28str%2Cpass_str%29,the%20ENCODE%20function%20use%20the%20DECODE%20%28crypt_str%2Cpass_str%29%20function%3A
+   UPDATE users SET users.mdp = MD5(param2) WHERE users.iduser = param1;
  END;
 //
 
@@ -77,9 +92,19 @@ DELIMITER ;
 
 DELIMITER //
 
-CREATE PROCEDURE beConnectedByEmailAndPassword (IN param1 VARCHAR(55), IN param2 VARCHAR(55))
+CREATE PROCEDURE beConnectedByNameAndPassword (IN param1 VARCHAR(55), IN param2 VARCHAR(55))
  BEGIN
-   UPDATE users SET users.isConnected = true WHERE users.email = param1 AND users.mdp = param2;
+   UPDATE users SET users.isConnected = true WHERE users.name = param1 AND users.mdp = param2;
+ END;
+//
+
+DELIMITER ;
+
+DELIMITER //
+
+CREATE PROCEDURE getIdByLogin (IN param1 VARCHAR(55), IN param2 VARCHAR(55))
+ BEGIN
+   SELECT users.iduser FROM users WHERE users.name = param1 AND users.mdp = param2;
  END;
 //
 
@@ -95,13 +120,74 @@ CREATE PROCEDURE logout (IN param1 INT)
 
 DELIMITER ;
 
-CALL beConnectedByEmailAndPassword("admin@site.com", 123); -- email = admin@site.com password = 123
-CALL beConnectedByEmailAndPassword("koto@site.com", 123); -- email = koto@site.com password = 123
+DELIMITER //
+
+CREATE PROCEDURE listUsersAndJobs ()
+ BEGIN
+   SELECT users.name, users.email, jobs.job FROM users JOIN jobs ON users.idjob=jobs.idjob;
+ END;
+//
+
+DELIMITER ;
 
 
-CALL listUsers();
+DELIMITER //
 
-CALL editPassById(2, "koto70?"); -- id = 2 password = "koto70?"
+CREATE PROCEDURE listUsersFindByJob (IN param1 VARCHAR(55))
+ BEGIN
+   SELECT users.name, users.email, jobs.job FROM users JOIN jobs ON jobs.idjob WHERE jobs.job LIKE CONCAT('%',param1,'%');
+ END;
+//
+
+DELIMITER ;
+
+DELIMITER //
+
+CREATE PROCEDURE setNameUserById (IN param1 INT, IN param2 VARCHAR(55))
+ BEGIN
+      UPDATE users SET users.name = param2 WHERE users.iduser = param1;
+ END;
+//
+
+DELIMITER ;
+
+
+
+DELIMITER //
+
+CREATE PROCEDURE cryptMyPass(IN identifiant INT, IN nouveauMdp VARCHAR(55))
+ BEGIN
+  UPDATE users SET users.mdp = AES_ENCRYPT(nouveauMdp, 'pass') WHERE users.iduser = identifiant;
+ END;
+//
+
+DELIMITER ;
+
+
+DELIMITER //
+
+CREATE PROCEDURE decryptMyPass(IN identifiant INT)
+ BEGIN
+  SELECT cast(aes_decrypt(users.mdp, 'pass') AS VARCHAR(55)) FROM `users` WHERE users.iduser = identifiant;
+ END;
+//
+
+DELIMITER ;
+
+-- exemple: SELECT cast(aes_decrypt(aes_encrypt('123', 'pass'), 'pass') AS char) as decrypted  FROM users WHERE users.iduser = 1;
+
+
+CALL setNameUserById(1, "admin");
+CALL setNameUserById(2, "koto");
+CALL setNameUserById(3, "liva");
+CALL setNameUserById(4, "rajao");
+CALL setNameUserById(5, "bean");
+
+CALL beConnectedByNameAndPassword("admin", 123); -- email = admin@site.com password = 123
+CALL beConnectedByNameAndPassword("koto", 123); -- email = koto@site.com password = 123
+
+
+
 
 
 CALL listUsers();
@@ -110,6 +196,18 @@ CALL logout(2);
 
 CALL listUsers();
 
-CALL beConnectedByEmailAndPassword("koto@site.com", "koto70?"); -- email = koto@site.com password = "koto70?"
+CALL beConnectedByNameAndPassword("koto", "koto70?"); -- email = koto@site.com password = "koto70?"
 
 CALL listUsers();
+
+CALL listUsersAndJobs();
+
+CALL listUsersFindByJob('agriculteur');
+
+CALL cryptMyPass(1, 'admin123');
+
+CALL listUsers();
+
+CALL decryptMyPass(1);
+
+CALL listUsersAndJobs();
