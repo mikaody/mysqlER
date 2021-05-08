@@ -11,6 +11,8 @@ CREATE TABLE dbEnock.jobs(
 
 CREATE TABLE dbEnock.users(
     iduser INT AUTO_INCREMENT NOT NULL,
+    tel VARCHAR(55) NOT NULL DEFAULT "+26134...",
+    address VARCHAR(55) NOT NULL DEFAULT "LOT...",
     email VARCHAR(55) NOT NULL,
     mdp blob NOT NULL,
     name VARCHAR(255) NULL,
@@ -24,13 +26,13 @@ INSERT INTO dbEnock.jobs(job) VALUES
 	("livreur"),
 	("vendeur");
 
-INSERT INTO dbEnock.users(email,mdp,idjob) VALUES
-	('enock@site.com',AES_ENCRYPT('123', 'pass'), 1),	
-	('koto@site.com',AES_ENCRYPT('123', 'pass'), 1),    
-	('liva@site.com',AES_ENCRYPT('123', 'pass'), 3),   
-	('rajao@site.com',AES_ENCRYPT('123', 'pass'), 2),    
-	('bean@site.com',AES_ENCRYPT('123', 'pass'), 1)    
-;
+-- INSERT INTO dbEnock.users(email,mdp,idjob) VALUES
+-- 	('enock@site.com',AES_ENCRYPT('123', 'pass'), 1),	
+-- 	('koto@site.com',AES_ENCRYPT('123', 'pass'), 1),    
+-- 	('liva@site.com',AES_ENCRYPT('123', 'pass'), 3),   
+-- 	('rajao@site.com',AES_ENCRYPT('123', 'pass'), 2),    
+-- 	('bean@site.com',AES_ENCRYPT('123', 'pass'), 1)    
+-- ;
 
 ALTER TABLE dbEnock.users ADD (isAdmin boolean, isConnected boolean);
 
@@ -52,10 +54,10 @@ DELIMITER ; -- end delimiter
 -- CALL whoisadmin();
 
 DELIMITER //
-
+-- cast(aes_decrypt(mdp, "pass") as VARCHAR(55))
 CREATE PROCEDURE listUsers ()
  BEGIN
-   SELECT iduser, email, cast(aes_decrypt(mdp, "pass") as VARCHAR(55)), name, isAdmin, isConnected FROM users;
+   SELECT iduser, email, mdp, name, isAdmin, isConnected FROM users;
  END;
 //
 
@@ -174,40 +176,54 @@ CREATE PROCEDURE decryptMyPass(IN identifiant INT)
 
 DELIMITER ;
 
+DELIMITER //
+
+CREATE PROCEDURE saveNewUser(IN myemail VARCHAR(55),IN myname VARCHAR(55), IN passw VARCHAR(55) )
+ BEGIN
+    INSERT INTO dbEnock.users(email,name,mdp,idjob,isAdmin,isConnected) VALUES
+      (myemail,myname,AES_ENCRYPT(passw, 'pass'),1,false,false) 
+    ;
+ END;
+//
+
+DELIMITER ;
+
 -- exemple: SELECT cast(aes_decrypt(aes_encrypt('123', 'pass'), 'pass') AS char) as decrypted  FROM users WHERE users.iduser = 1;
 
 
-CALL setNameUserById(1, "admin");
-CALL setNameUserById(2, "koto");
-CALL setNameUserById(3, "liva");
-CALL setNameUserById(4, "rajao");
-CALL setNameUserById(5, "bean");
+-- CALL setNameUserById(1, "admin");
+-- CALL setNameUserById(2, "koto");
+-- CALL setNameUserById(3, "liva");
+-- CALL setNameUserById(4, "rajao");
+-- CALL setNameUserById(5, "bean");
 
-CALL beConnectedByNameAndPassword("admin", 123); -- email = admin@site.com password = 123
-CALL beConnectedByNameAndPassword("koto", 123); -- email = koto@site.com password = 123
-
-
+-- CALL beConnectedByNameAndPassword("admin", 123); -- email = admin@site.com password = 123
+-- CALL beConnectedByNameAndPassword("koto", 123); -- email = koto@site.com password = 123
 
 
 
-CALL listUsers();
 
-CALL logout(2);
 
-CALL listUsers();
+-- CALL listUsers();
 
-CALL beConnectedByNameAndPassword("koto", "koto70?"); -- email = koto@site.com password = "koto70?"
+-- CALL logout(2);
 
-CALL listUsers();
+-- CALL listUsers();
 
-CALL listUsersAndJobs();
+-- CALL beConnectedByNameAndPassword("koto", "koto70?"); -- email = koto@site.com password = "koto70?"
 
-CALL listUsersFindByJob('agriculteur');
+-- CALL listUsers();
 
-CALL cryptMyPass(1, 'admin123');
+-- CALL listUsersAndJobs();
 
-CALL listUsers();
+-- CALL listUsersFindByJob('agriculteur');
 
-CALL decryptMyPass(1);
+-- CALL cryptMyPass(1, 'admin123');
 
-CALL listUsersAndJobs();
+-- CALL listUsers();
+
+-- CALL decryptMyPass(1);
+
+-- CALL saveNewUser("lita@gmail.com","lita","lita123" );
+
+-- CALL listUsersAndJobs();
